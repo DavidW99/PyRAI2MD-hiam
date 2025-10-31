@@ -45,7 +45,6 @@ class NequIPNAC:
         self.natom = param['natom']
 
         self.set_device()
-        self.load_model()
 
     def set_device(self):
         self.device = torch.device(torch.cuda.current_device() if torch.cuda.is_available() and self.gpu else "cpu")
