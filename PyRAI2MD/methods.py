@@ -17,6 +17,7 @@ from PyRAI2MD.Quantum_Chemistry.qmqm2 import QMQM2
 from PyRAI2MD.Machine_Learning.model_NN import DNN
 from PyRAI2MD.Machine_Learning.model_demo import Demo
 from PyRAI2MD.Machine_Learning.model_helper import DummyModel
+from PyRAI2MD.Machine_Learning.model_nequip import NequIPModel
 
 try:
     from PyRAI2MD.Machine_Learning.model_pyNNsMD import MLP
@@ -81,6 +82,7 @@ class QM:
             'e2n2_demo': E2N2Demo,
             'e2n2': E2N2,
             'dimenet': DimenetModel,
+            'nequip': NequIPModel,
         }
 
         # methods available for QM 1 region calculation
@@ -97,6 +99,7 @@ class QM:
             'e2n2_demo': E2N2Demo,
             'e2n2': E2N2,
             'dimenet': DimenetModel,
+            'nequip': NequIPModel,
         }
 
         # methods available for QM 2 region calculation
