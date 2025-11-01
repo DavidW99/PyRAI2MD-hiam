@@ -70,18 +70,21 @@ class NequIPModel:
         h_to_ev = 27.211396132
         h_bohr_to_ev_a = 27.211396132 / 0.529177249
         
-        # Assume 'si' units
-        assert eg_unit == 'si' and nac_unit == 'si', "eg_unit and nac_unit must be consistent with the data that trained the NequIP-NAC model."
+        print(f"NequIP-NAC model are trained and predicted in eV and eV/Å units.")
+        # NequIP-NAC model ouputs in eV and eV/Å
+        # PyRAI2MD expects Hartree and Hartree/Bohr
 
         if eg_unit == 'si':
             self.f_e = 1
             self.f_g = 1
-            # self.k_e = 1
-            # self.k_g = 1
+        else:
+            self.f_e = h_to_ev
+            self.f_g = h_bohr_to_ev_a
         
         if nac_unit == 'si':
             self.f_n = 1
-            # self.k_n = 1
+        else:
+            self.f_n = h_bohr_to_ev_a
 
         # Setup GPU
         ngpu = torch.cuda.device_count()
