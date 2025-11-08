@@ -17,7 +17,6 @@ from PyRAI2MD.Quantum_Chemistry.qmqm2 import QMQM2
 from PyRAI2MD.Machine_Learning.model_NN import DNN
 from PyRAI2MD.Machine_Learning.model_demo import Demo
 from PyRAI2MD.Machine_Learning.model_helper import DummyModel
-from PyRAI2MD.Machine_Learning.model_nequip import NequIPModel
 
 try:
     from PyRAI2MD.Machine_Learning.model_pyNNsMD import MLP
@@ -46,6 +45,12 @@ try:
 
 except ModuleNotFoundError:
     DimenetModel = DummyModel
+
+try:
+    from PyRAI2MD.Machine_Learning.model_nequip import NequIPModel
+    
+except ModuleNotFoundError:
+    NequIPModel = DummyModel
 
 class QM:
     """ Electronic structure method class
