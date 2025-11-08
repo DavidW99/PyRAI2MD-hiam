@@ -23,7 +23,7 @@ from PyRAI2MD.Keywords.key_e2n2demo import KeyE2N2Demo
 from PyRAI2MD.Keywords.key_e2n2 import KeyE2N2
 from PyRAI2MD.Keywords.key_dimenet import KeyDimeNet
 from PyRAI2MD.Keywords.key_read_file import KeyReadFile
-
+from PyRAI2MD.Keywords.key_nequip import KeyNequIP
 
 def read_input(ld_input):
     ## This function read keywords from input
@@ -43,6 +43,7 @@ def read_input(ld_input):
         'schnet': KeyNN(nn_type='schnet'),
         'e2n2': KeyNN(nn_type='e2n2'),
         'dimenet': KeyNN(nn_type='dimenet'),
+        'nequip': KeyNN(nn_type='nequip'),
         'search': KeySearch(),
         'eg': KeyMLP(key_type='eg'),
         'nac': KeyMLP(key_type='nac'),
@@ -57,6 +58,8 @@ def read_input(ld_input):
         'e2n2_nac': KeyE2N2(key_type='nac'),
         'e2n2_soc': KeyE2N2(key_type='soc'),
         'dime_nac': KeyDimeNet(key_type='nac'),
+        'nequip_eg': KeyNequIP(key_type='eg'),
+        'nequip_nac': KeyNequIP(key_type='nac'),
         'file': KeyReadFile(),
     }
 
@@ -101,6 +104,8 @@ def read_input(ld_input):
         variables_all['e2n2']['e2n2_nac'] = variables_all['e2n2_nac']
         variables_all['e2n2']['e2n2_soc'] = variables_all['e2n2_soc']
         variables_all['dimenet']['dime_nac'] = variables_all['dime_nac']
+        variables_all['nequip']['nequip_eg'] = variables_all['nequip_eg']
+        variables_all['nequip']['nequip_nac'] = variables_all['nequip_nac']
         variables_all['nn']['ml_seed'] = variables_all['control']['gl_seed']
         variables_all['mlp']['ml_seed'] = variables_all['control']['gl_seed']
         variables_all['schnet']['ml_seed'] = variables_all['control']['gl_seed']
@@ -145,6 +150,9 @@ def read_input(ld_input):
         'dimenet':
             KeyNN(nn_type='dimenet').info(variables_all['dimenet']) +
             KeyDimeNet().info(variables_all['dime_nac']),
+        'nequip':
+            KeyNN(nn_type='nequip').info(variables_all['nn']) +
+            KeyNequIP().info(variables_all['nequip_eg'], variables_all['nequip_nac']),
         'molcas': KeyMolcas().info(variables_all['molcas']),
         'mlctkr': KeyMolcas().info(variables_all['molcas']),
         'bagel': KeyBagel().info(variables_all['bagel']),
