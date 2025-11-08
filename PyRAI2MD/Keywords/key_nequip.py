@@ -13,12 +13,20 @@ from PyRAI2MD.Utils.read_tools import ReadVal
 class KeyNequIP:
 
     def __init__(self, key_type='nac'):
-        eg = None
-
-        nac = {
+        eg = {
+            'model_type': '',
             'model_path': '',
             'gpu': 1,
             'chemical_symbols': None,
+            'natom': None,
+        }
+
+        nac = {
+            'model_type': '',
+            'model_path': '',
+            'gpu': 1,
+            'chemical_symbols': None,
+            'natom': None,
         }
 
         soc = None
@@ -39,9 +47,11 @@ class KeyNequIP:
         ## This function read variables from &nequip_eg,&nequip_nac,&nequip_soc
         keywords = self.keywords.copy()
         keyfunc = {
+            'model_type': ReadVal('s'),
             'model_path': ReadVal('s'),
             'gpu': ReadVal('i'),
             'chemical_symbols': ReadVal('sl'),
+            'natom': ReadVal('i'),
         }
 
         for i in values:
@@ -57,25 +67,29 @@ class KeyNequIP:
         return keywords
 
     @staticmethod
-    def info(nac):
+    def info(eg, nac):
         summary = """
 
-  NequIP-NAC (NAC only)
+  NequIP-NAC (Energy + Gradient + NAC)
 
   &hyperparameters            Energy+Gradient      Nonadiabatic         Spin-orbit
 ----------------------------------------------------------------------------------------------
+  Model type:                 NequIP%-13s NequIP%-13s N/A
   Model path:                 %-20s %-20s %-20s
   GPU:                        %-20s %-20s %-20s
   Chemical symbols:           %-20s %-20s %-20s
 ----------------------------------------------------------------------------------------------
         """ % (
-            'n/a',
+            eg['model_type'],
+            nac['model_type'],
+            '',
+            eg['model_path'],
             nac['model_path'],
             'n/a',
-            'n/a',
+            eg['gpu'],
             nac['gpu'],
             'n/a',
-            'n/a',
+            str(eg['chemical_symbols']) if eg['chemical_symbols'] else 'auto',
             str(nac['chemical_symbols']) if nac['chemical_symbols'] else 'auto',
             'n/a',
         )
