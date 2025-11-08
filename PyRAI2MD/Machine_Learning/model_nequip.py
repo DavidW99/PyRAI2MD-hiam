@@ -45,17 +45,19 @@ class NequIPModel:
         title = keywords['control']['title']
         variables = keywords['nequip'].copy()
         modeldir = variables['modeldir']
-        data = variables['data']
         eg_unit = variables['eg_unit']
         nac_unit = variables['nac_unit']
+        gpu = variables['gpu']
         
         self.jobtype = keywords['control']['jobtype']
         self.version = keywords['version']
         self.silent = variables['silent']
-        self.natom = data.natom
-        self.nstate = data.nstate
-        self.nnac = data.nnac
-        self.nsoc = data.nsoc
+
+        # TODO: update to code standard 
+        self.natom = variables['nequip_eg']['natom']
+        self.nstate = keywords['molecule']['ci']
+        self.nnac = len(keywords['molecule']['coupling'])
+        self.nsoc = None 
         
         # Assign folder name
         if job_id is None or job_id == 1:
@@ -102,7 +104,7 @@ class NequIPModel:
         
         # Setup model parameters
         param = {
-            'model_path': variables['model_path'],
+            'model_path': variables['modeldir'],
             'gpu': gpu > 0,
             'natom': self.natom,
             'nnac': self.nnac,
