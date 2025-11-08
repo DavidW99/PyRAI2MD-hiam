@@ -155,8 +155,11 @@ class NequIPNAC:
                 data_list[i] = t(data_list[i])
             data_list[i] = AtomicDataDict.to_(data_list[i], self.device)
 
-        # Use NequIP's built-in batching function
-        data = AtomicDataDict.batched_from_list(data_list)
+        if num_data == 1:
+            data = data_list[0]
+        else:
+            # Use NequIP's built-in batching function
+            data = AtomicDataDict.batched_from_list(data_list)
         
         # === predict + extract data ===
         out = self.model(data)
