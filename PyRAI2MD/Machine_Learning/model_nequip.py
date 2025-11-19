@@ -172,29 +172,30 @@ class NequIPModel:
         err_s = 0
         
         # Extract energy and gradient (NequIP-NAC predicts both states)
+        # Note: [0] is used to extract the single batch result assumed during prediction
         if 'energy' in y_pred.keys():
-            e_pred = np.array(y_pred['energy']) / self.f_e  # (2,) -> two states
-            e_std = np.array(y_std['energy']) / self.f_e
+            e_pred = np.array(y_pred['energy'])[0] / self.f_e  # (2,) -> two states
+            e_std = np.array(y_std['energy'])[0] / self.f_e
             energy = e_pred
             err_e = np.amax(e_std)
         
         if 'energy_gradient' in y_pred.keys():
-            g_pred = np.array(y_pred['energy_gradient']) / self.f_g  # (2, natom, 3)
-            g_std = np.array(y_std['energy_gradient']) / self.f_g
+            g_pred = np.array(y_pred['energy_gradient'])[0] / self.f_g  # (2, natom, 3)
+            g_std = np.array(y_std['energy_gradient'])[0] / self.f_g
             gradient = g_pred
             err_g = np.amax(g_std)
         
         # Extract NAC
         if 'nac' in y_pred.keys():
-            n_pred = np.array(y_pred['nac']) / self.f_n  # (1, natom, 3)
-            n_std = np.array(y_std['nac']) / self.f_n
+            n_pred = np.array(y_pred['nac'])[0] / self.f_n  # (1, natom, 3)
+            n_std = np.array(y_std['nac'])[0] / self.f_n
             nac = n_pred
             err_n = np.amax(n_std)
         
         # SOC not supported
         if 'soc' in y_pred.keys():
-            s_pred = np.array(y_pred['soc'])
-            s_std = np.array(y_std['soc'])
+            s_pred = np.array(y_pred['soc'])[0]
+            s_std = np.array(y_std['soc'])[0]
             soc = s_pred
             err_s = np.amax(s_std)
         
@@ -222,29 +223,30 @@ class NequIPModel:
         err_s = 0
         
         # Extract energy and gradient
+        # Note: [0] is used to extract the single batch result assumed during prediction
         if 'energy' in y_pred.keys():
-            e_pred = np.array(y_pred['energy']) / self.f_e  # (2,)
-            e_std = np.array(y_std['energy']) / self.f_e
+            e_pred = np.array(y_pred['energy'])[0] / self.f_e  # (2,)
+            e_std = np.array(y_std['energy'])[0] / self.f_e
             energy = e_pred
             err_e = np.amax(e_std)
         
         if 'energy_gradient' in y_pred.keys():
-            g_pred = np.array(y_pred['energy_gradient']) / self.f_g  # (2, natom, 3)
-            g_std = np.array(y_std['energy_gradient']) / self.f_g
+            g_pred = np.array(y_pred['energy_gradient'])[0] / self.f_g  # (2, natom, 3)
+            g_std = np.array(y_std['energy_gradient'])[0] / self.f_g
             gradient = g_pred
             err_g = np.amax(g_std)
         
         # Extract NAC
         if 'nac' in y_pred.keys():
-            n_pred = np.array(y_pred['nac']) / self.f_n  # (1, natom, 3)
-            n_std = np.array(y_std['nac']) / self.f_n
+            n_pred = np.array(y_pred['nac'])[0] / self.f_n  # (1, natom, 3)
+            n_std = np.array(y_std['nac'])[0] / self.f_n
             nac = n_pred
             err_n = np.amax(n_std)
         
         # SOC not supported
         if 'soc' in y_pred.keys():
-            s_pred = np.array(y_pred['soc'])
-            s_std = np.array(y_std['soc'])
+            s_pred = np.array(y_pred['soc'])[0]
+            s_std = np.array(y_std['soc'])[0]
             soc = s_pred
             err_s = np.amax(s_std)
         
