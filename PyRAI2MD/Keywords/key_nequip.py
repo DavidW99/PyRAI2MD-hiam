@@ -74,7 +74,7 @@ class KeyNequIP:
 
   &hyperparameters            Energy+Gradient      Nonadiabatic         Spin-orbit
 ----------------------------------------------------------------------------------------------
-  Model type:                 NequIP%-13s NequIP%-13s N/A
+  Model type:                 NequIP%-13s NequIP%-13s %-13s
   Model path:                 %-20s %-20s %-20s
   GPU:                        %-20s %-20s %-20s
   Chemical symbols:           %-20s %-20s %-20s
@@ -82,7 +82,7 @@ class KeyNequIP:
         """ % (
             eg['model_type'],
             nac['model_type'],
-            '',
+            'n/a',
             eg['model_path'],
             nac['model_path'],
             'n/a',
