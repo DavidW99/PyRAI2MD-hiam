@@ -70,7 +70,8 @@ class NequIPModel:
         
         # Unit conversions (au to eV/Å)
         h_to_ev = 27.211396132
-        h_bohr_to_ev_a = 27.211396132 / 0.529177249
+        self.Bohr_to_Angstrom = 0.529177249
+        h_bohr_to_ev_a = 27.211396132 / self.Bohr_to_Angstrom
         
         print(f"NequIP-NAC model are trained and predicted in eV and eV/Å units.")
         # NequIP-NAC model ouputs in eV and eV/Å
@@ -155,7 +156,7 @@ class NequIPModel:
         
         # Prepare input: (1, natom, 4) with [symbol, x, y, z]
         atoms = traj.qm_atoms.reshape((1, self.natom, 1))
-        xyz = traj.qm_coord.reshape((1, self.natom, 3))
+        xyz = traj.qm_coord.reshape((1, self.natom, 3)) * self.Bohr_to_Angstrom
         x = np.concatenate((atoms, xyz), axis=-1).tolist()
         
         # Predict
@@ -206,7 +207,7 @@ class NequIPModel:
         
         # Prepare input: (1, natom, 4) with [symbol, x, y, z]
         atoms = traj.atoms.reshape((1, self.natom, 1))
-        xyz = traj.coord.reshape((1, self.natom, 3))
+        xyz = traj.coord.reshape((1, self.natom, 3)) * self.Bohr_to_Angstrom
         x = np.concatenate((atoms, xyz), axis=-1).tolist()
         
         # Predict
