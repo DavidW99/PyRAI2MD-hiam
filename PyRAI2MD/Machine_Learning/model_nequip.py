@@ -102,9 +102,14 @@ class NequIPModel:
         else:
             self.device_name = 'cpu'
         
+        # Handle multiple models in modeldir
+        model_path = variables['modeldir']
+        if isinstance(model_path, str) and ',' in model_path:
+            model_path = [p.strip() for p in model_path.split(',')]
+
         # Setup model parameters
         param = {
-            'model_path': variables['modeldir'],
+            'model_path': model_path,
             'gpu': gpu > 0,
             'natom': self.natom,
             'nnac': self.nnac,

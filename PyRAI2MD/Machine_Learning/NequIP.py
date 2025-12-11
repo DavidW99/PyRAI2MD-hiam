@@ -36,9 +36,14 @@ class NequIPNAC:
 
     def __init__(self, param):
         self.param = param
-        self.model_path = param['model_path']
+        model_path = param['model_path']
+        if isinstance(model_path, str):
+            self.model_paths = [model_path]
+        else:
+            self.model_paths = model_path
+
         self.gpu = self.param['gpu']
-        self.model = None
+        self.models = []
         self.metadata = None
         self.transforms = []
         self.nnac = param['nnac']
@@ -63,14 +68,34 @@ class NequIPNAC:
         ]
         
         # Load compiled model with proper inputs/outputs specification
-        self.model, self.metadata = load_compiled_model(
-            self.model_path, 
-            device=self.device,
-            input_keys=PAIR_NEQUIP_INPUTS,
-            output_keys=NAC_OUTPUTS,
-        )
+        self.models = []
+        first_metadata = None
+
+        for i, path in enumerate(self.model_paths):
+            model, metadata = load_compiled_model(
+                path, 
+                device=self.device,
+                input_keys=PAIR_NEQUIP_INPUTS,
+                output_keys=NAC_OUTPUTS,
+            )
+            self.models.append(model)
+
+            if i == 0:
+                first_metadata = metadata
+            else:
+                # Check consistency of metadata across ensemble models
+                if metadata[graph_model.R_MAX_KEY] != first_metadata[graph_model.R_MAX_KEY]:
+                    raise ValueError(f"Model at {path} has different r_max ({metadata[graph_model.R_MAX_KEY]}) than the first model ({first_metadata[graph_model.R_MAX_KEY]}). Ensemble models must have consistent metadata.")
+                
+                if metadata[graph_model.TYPE_NAMES_KEY] != first_metadata[graph_model.TYPE_NAMES_KEY]:
+                    raise ValueError(f"Model at {path} has different type_names ({metadata[graph_model.TYPE_NAMES_KEY]}) than the first model ({first_metadata[graph_model.TYPE_NAMES_KEY]}). Ensemble models must have consistent metadata.")
+                
+                if metadata.get(graph_model.PER_EDGE_TYPE_CUTOFF_KEY, None) is not None:
+                    if metadata[graph_model.PER_EDGE_TYPE_CUTOFF_KEY] != first_metadata.get(graph_model.PER_EDGE_TYPE_CUTOFF_KEY, None):
+                        raise ValueError(f"Model at {path} has different per_edge_type_cutoff than the first model. Ensemble models must have consistent metadata.")
         
         # Extract r_max and type_names from metadata for transforms
+        self.metadata = first_metadata
         r_max = self.metadata[graph_model.R_MAX_KEY]
         type_names = self.metadata[graph_model.TYPE_NAMES_KEY]
         
@@ -142,8 +167,6 @@ class NequIPNAC:
             )
         assert all(len(xyz) == self.natom for xyz in xyz_list), "All structures must have the same number of atoms as specified in natom."
 
-        self.model.eval()
-
         num_data = len(xyz_list)
 
         # Prepare data
@@ -161,58 +184,80 @@ class NequIPNAC:
             # Use NequIP's built-in batching function
             data = AtomicDataDict.batched_from_list(data_list)
         
-        # === predict + extract data ===
-        out = self.model(data)
+        # Lists to store predictions from each model
+        all_energies = []
+        all_energy_grads = []
+        all_nacs = []
 
-        # Extract for different states
-        energy_0 = out[ENERGY_0_KEY].detach().cpu().numpy() 
-        energy_1 = out[ENERGY_1_KEY].detach().cpu().numpy()
-        energy_grad_0_all = -out[FORCE_0_KEY].detach().cpu().numpy()
-        energy_grad_1_all = -out[FORCE_1_KEY].detach().cpu().numpy()
-        # Extract NACs
-        assert self.nnac == 1, "Only nnac=1 is supported currently."
-        nac_all = out[NAC_KEY].detach().cpu().numpy()
-
-        if num_data == 1:
-            batch_idx = np.zeros(len(nac_all), dtype=int)
-        else:
-            batch_idx = out[AtomicDataDict.BATCH_KEY].cpu().numpy()
-
-        # Unbatch node-level properties (SAFE for variable natom)
-        energy_grad_list = []
-        nacs_list = []
-        
-        for i in range(num_data):
-            # Extract atoms belonging to structure i
-            mask = batch_idx == i
+        for model in self.models:
+            model.eval()
             
-            # Works regardless of natom for each structure
-            energy_grad_0 = energy_grad_0_all[mask]  # (natom_i, 3)
-            energy_grad_1 = energy_grad_1_all[mask]  # (natom_i, 3)
-            nac = nac_all[mask]                     # (natom_i, 3)
-            
-            energy_grad_list.append(np.stack([energy_grad_0, energy_grad_1], axis=0))
-            nacs_list.append(nac[np.newaxis])
-        
-        # Stack results
-        energies = np.concatenate([energy_0, energy_1], axis=1) # (num_data, nstate)
-        energy_grads = np.array(energy_grad_list)  # (num_data, nstate, natom, 3)
-        nacs = np.array(nacs_list)  # (num_data, nnac, natom, 3)
+            # === predict + extract data ===
+            out = model(data)
 
-        assert energies.shape == (num_data, 2)
-        assert energy_grads.shape[0] == num_data and energy_grads.shape[1] == 2
-        assert nacs.shape[0] == num_data and nacs.shape[1] == self.nnac
+            # Extract for different states
+            energy_0 = out[ENERGY_0_KEY].detach().cpu().numpy() 
+            energy_1 = out[ENERGY_1_KEY].detach().cpu().numpy()
+            energy_grad_0_all = -out[FORCE_0_KEY].detach().cpu().numpy()
+            energy_grad_1_all = -out[FORCE_1_KEY].detach().cpu().numpy()
+            # Extract NACs
+            assert self.nnac == 1, "Only nnac=1 is supported currently."
+            nac_all = out[NAC_KEY].detach().cpu().numpy()
+
+            if num_data == 1:
+                batch_idx = np.zeros(len(nac_all), dtype=int)
+            else:
+                batch_idx = out[AtomicDataDict.BATCH_KEY].cpu().numpy()
+
+            # Unbatch node-level properties (SAFE for variable natom)
+            energy_grad_list = []
+            nacs_list = []
+            
+            for i in range(num_data):
+                # Extract atoms belonging to structure i
+                mask = batch_idx == i
+                
+                # Works regardless of natom for each structure
+                energy_grad_0 = energy_grad_0_all[mask]  # (natom_i, 3)
+                energy_grad_1 = energy_grad_1_all[mask]  # (natom_i, 3)
+                nac = nac_all[mask]                     # (natom_i, 3)
+                
+                energy_grad_list.append(np.stack([energy_grad_0, energy_grad_1], axis=0))
+                nacs_list.append(nac[np.newaxis])
+            
+            # Stack results
+            energies = np.concatenate([energy_0, energy_1], axis=1) # (num_data, nstate)
+            energy_grads = np.array(energy_grad_list)  # (num_data, nstate, natom, 3)
+            nacs = np.array(nacs_list)  # (num_data, nnac, natom, 3)
+
+            all_energies.append(energies)
+            all_energy_grads.append(energy_grads)
+            all_nacs.append(nacs)
+
+        # Calculate mean and std
+        mean_energies = np.mean(all_energies, axis=0)
+        std_energies = np.std(all_energies, axis=0, ddof=1) if len(self.models) > 1 else np.zeros_like(mean_energies)
+        
+        mean_energy_grads = np.mean(all_energy_grads, axis=0)
+        std_energy_grads = np.std(all_energy_grads, axis=0, ddof=1) if len(self.models) > 1 else np.zeros_like(mean_energy_grads)
+        
+        mean_nacs = np.mean(all_nacs, axis=0)
+        std_nacs = np.std(all_nacs, axis=0, ddof=1) if len(self.models) > 1 else np.zeros_like(mean_nacs)
+
+        assert mean_energies.shape == (num_data, 2)
+        assert mean_energy_grads.shape[0] == num_data and mean_energy_grads.shape[1] == 2
+        assert mean_nacs.shape[0] == num_data and mean_nacs.shape[1] == self.nnac
 
         mean_dict = {
-            'energy': energies, 
-            'energy_gradient': energy_grads,
-            'nac': nacs
+            'energy': mean_energies, 
+            'energy_gradient': mean_energy_grads,
+            'nac': mean_nacs
         }
         
         std_dict = {
-            'energy': np.zeros_like(energies),
-            'energy_gradient': np.zeros_like(energy_grads),
-            'nac': np.zeros_like(nacs)
+            'energy': std_energies,
+            'energy_gradient': std_energy_grads,
+            'nac': std_nacs
         }
         
         return mean_dict, std_dict
