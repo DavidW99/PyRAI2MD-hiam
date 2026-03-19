@@ -95,6 +95,7 @@
   |   |--key_e2n2.py                               keywords for e2n2 settings                       
   |   |--key_e2n2_demo.py                          keywords for e2n2 demo settings
   |   |--key_dimenet.py                            keywords for dimenet (NAC model) setting         
+  |   |--key_nequip.py                             keywords for nequip (NAC model) setting
   |   |--key_read_file.py                          keywords for reading training data                
   |    `-key_templ.py                              keywords class template                           
   |
@@ -121,6 +122,7 @@
   |   |--model_pyNNsMD.py                          pyNNsMD interface                               
   |   |--model_GCNNP.py                            GCNNP interface                                  
   |   |--model_DimeNet.py                          DimeNet NAC model interface                 
+  |   |--model_nequip.py                           NequIP-NAC model interface
   |   |--model_templ.py                            NN interface template                       
   |   |--model_helper.py                           additional tools for neural network              
   |   |--hyper_nn.py                               native neural network hyperparameter             
@@ -137,6 +139,7 @@
   |   |--search_GCNNP.py                           grid search function for e2n2                    
   |   |--remote_train.py                           remote training function                         
   |   |--Dimenet.py                                Dimenet NAC model                                
+  |   |--NequIP.py                                 NequIP-NAC model wrapper
   |   |--NNsMD                                     demo version neural network library  
   |    `-pyNNsMD                                   native neural network library                  
   |
@@ -200,6 +203,11 @@ Modify the environment variables in the template
 Run test, this might take a while
 
     bash run_test.sh
+
+NequIP-specific checks are available under **test/nequip**
+
+    python test/nequip/test_nequip_interface.py
+    pytest test/nequip/test_nequip_rng_guard.py
     
 ## Run PyRAI2MD
 
