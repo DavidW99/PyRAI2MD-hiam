@@ -1,4 +1,18 @@
 # Python Rapid Artificial Intelligence Ab Initio Molecular Dynamics
+### 🚧 Experimental NequIP-NAC Integration (Temporary)
+
+*Note: The NequIP-NAC integration is currently in active development. Once the Pull Request is merged into the main `mlcclab` repository, this section will be removed.*
+
+To use the experimental NequIP-NAC features, simply clone this fork and install. The `feature/nequip-dev` branch is already set as the default.
+
+```bash
+# Clone this forked repository (automatically uses the nequip-dev branch)
+git clone https://github.com/DavidW99/PyRAI2MD-hiam.git
+cd PyRAI2MD-hiam
+
+# Install in editable mode
+pip install -e .
+```
 <pre>
 
                               /\
