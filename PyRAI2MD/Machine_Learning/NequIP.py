@@ -15,25 +15,11 @@ import torch
 import numpy as np
 import warnings
 
-from nequip.model.inference_models import load_compiled_model
-from nequip.nn import graph_model
-from nequip.data import AtomicDataDict
-from nequip.data.dict import from_dict
-from ase.data import atomic_numbers
-from nequip.data.transforms import (
-    ChemicalSpeciesToAtomTypeMapper,
-    NeighborListTransform,
-)
-from nequip.ase.nequip_calculator import _create_neighbor_transform
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-# Import keys from nequip_nac models
-from nequip_nac._keys import (
-    NAC_KEY,
-    ENERGY_0_KEY,
-    ENERGY_1_KEY,
-    FORCE_0_KEY,
-    FORCE_1_KEY,
-)
+if TYPE_CHECKING:
+    from nequip.data import AtomicDataDict
 
 class NequIPNAC:
 
@@ -56,6 +42,43 @@ class NequIPNAC:
 
     def set_device(self):
         self.device = torch.device(torch.cuda.current_device() if torch.cuda.is_available() and self.gpu else "cpu")
+
+    @staticmethod
+    def _get_nequip_load_dependencies():
+        # Deferred imports keep this wrapper importable in lightweight test environments.
+        from nequip.model.inference_models import load_compiled_model
+        from nequip.nn import graph_model
+        from nequip.ase.nequip_calculator import _create_neighbor_transform
+        from nequip.data.transforms import ChemicalSpeciesToAtomTypeMapper
+        from nequip.scripts._compile_utils import PAIR_NEQUIP_INPUTS
+
+        return (
+            load_compiled_model,
+            graph_model,
+            _create_neighbor_transform,
+            ChemicalSpeciesToAtomTypeMapper,
+            PAIR_NEQUIP_INPUTS,
+        )
+
+    @staticmethod
+    def _get_nequip_predict_dependencies():
+        from ase.data import atomic_numbers
+        from nequip.data import AtomicDataDict
+        from nequip.data.dict import from_dict
+
+        return AtomicDataDict, from_dict, atomic_numbers
+
+    @staticmethod
+    def _get_nequip_nac_keys():
+        from nequip_nac._keys import (
+            NAC_KEY,
+            ENERGY_0_KEY,
+            ENERGY_1_KEY,
+            FORCE_0_KEY,
+            FORCE_1_KEY,
+        )
+
+        return NAC_KEY, ENERGY_0_KEY, ENERGY_1_KEY, FORCE_0_KEY, FORCE_1_KEY
 
     @staticmethod
     def _capture_torch_rng_state():
@@ -114,7 +137,14 @@ class NequIPNAC:
         
     def load_model(self):
         """Load trained and compiled NequIP-NAC model using from_compiled_model pattern"""
-        from nequip.scripts._compile_utils import PAIR_NEQUIP_INPUTS
+        (
+            load_compiled_model,
+            graph_model,
+            create_neighbor_transform,
+            ChemicalSpeciesToAtomTypeMapper,
+            PAIR_NEQUIP_INPUTS,
+        ) = self._get_nequip_load_dependencies()
+        NAC_KEY, ENERGY_0_KEY, ENERGY_1_KEY, FORCE_0_KEY, FORCE_1_KEY = self._get_nequip_nac_keys()
 
         # Define custom outputs for NAC model
         NAC_OUTPUTS = [
@@ -159,7 +189,7 @@ class NequIPNAC:
         type_names = self.metadata[graph_model.TYPE_NAMES_KEY]
         
         # Create neighbor list transform with per-edge-type cutoffs if available
-        neighbor_transform = _create_neighbor_transform(self.metadata, r_max, type_names)
+        neighbor_transform = create_neighbor_transform(self.metadata, r_max, type_names)
 
         # Use type_names as chemical_symbols (fallback behavior)
         # You can pass chemical_symbols in param
@@ -187,6 +217,8 @@ class NequIPNAC:
         Returns:
             data: AtomicDataDict for NequIP model
         """
+        AtomicDataDict, from_dict, atomic_numbers = self._get_nequip_predict_dependencies()
+
         # Extract symbols and coordinates
         symbols = xyz_molecule[:, 0]
         positions = xyz_molecule[:, 1:4].astype(np.float64)
@@ -218,6 +250,9 @@ class NequIPNAC:
             mean_dict: Dict with 'energy', 'energy_gradient' and 'nac' predictions
             std_dict: Dict with uncertainties (zeros for now)
         """
+        AtomicDataDict, _, _ = self._get_nequip_predict_dependencies()
+        NAC_KEY, ENERGY_0_KEY, ENERGY_1_KEY, FORCE_0_KEY, FORCE_1_KEY = self._get_nequip_nac_keys()
+
         # Check if xyz_list is a list
         if not isinstance(xyz_list, list):
             raise TypeError(
