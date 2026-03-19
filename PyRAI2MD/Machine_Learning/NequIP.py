@@ -8,16 +8,15 @@
 #
 ######################################################
 
+from __future__ import annotations
+
 import random
 from contextlib import contextmanager
-
 import torch
 import numpy as np
 import warnings
 
-from __future__ import annotations
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from nequip.data import AtomicDataDict
 
