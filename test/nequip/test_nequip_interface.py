@@ -1,11 +1,17 @@
+from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 from PyRAI2MD.Machine_Learning.NequIP import NequIPNAC
 
+
 def test_nequip_data_conversion():
     """Test converstion of xyz_list to nequip data"""
-    traj = read('molecule_eg.xyz', index=":")
+    test_dir = Path(__file__).resolve().parent
+    xyz_path = test_dir / "molecule_eg.xyz"
+    model_path = test_dir / "nac_model.nequip.pth"
+
+    traj = read(xyz_path, index=":")
     xyz_list = []
     for atoms in traj:
         natom = len(atoms)
@@ -15,7 +21,7 @@ def test_nequip_data_conversion():
     n_frames = len(xyz_list)
     nstate = 2  # assuming 2 states for this test
     nequip = NequIPNAC(param={
-        'model_path': 'nac_model.nequip.pth',
+        'model_path': str(model_path),
         'gpu': False, # For testing, use CPU
         'nnac': 1,
         'natom': natom,
@@ -45,6 +51,3 @@ def test_nequip_data_conversion():
     np.testing.assert_allclose(mean_dict_batch['energy'][0], mean_dict['energy'][0], atol=1e-5)
     np.testing.assert_allclose(mean_dict_batch['energy_gradient'][0], mean_dict['energy_gradient'][0], atol=1e-5)
     np.testing.assert_allclose(mean_dict_batch['nac'][0], mean_dict['nac'][0], atol=1e-5)
-
-if __name__ == "__main__":
-    test_nequip_data_conversion()
