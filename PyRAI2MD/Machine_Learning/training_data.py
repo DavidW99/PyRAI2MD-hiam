@@ -313,6 +313,43 @@ class Data:
 
         return self
 
+    def initialize_from_batch(self, newdata):
+        """Initialize Data from the first QC batch 
+        when adaptive sampling starts without seed data."""
+        new_xyz, new_charges, new_cell, new_pbc, new_energy, new_grad, new_nac, new_soc = newdata
+
+        # frame specific properties
+        self.xyz = np.array(new_xyz, dtype=object)
+        self.energy = np.array(new_energy, dtype=float)
+        self.grad = np.array(new_grad, dtype=float)
+        self.nac = np.array(new_nac, dtype=float)
+        self.soc = np.array(new_soc, dtype=float)
+        self.atoms = np.array(self.xyz[:, :, 0]).astype(str).tolist()
+        self.geos = np.array(self.xyz[:, :, 1: 4]).astype(float)
+        self.charges = np.array(new_charges, dtype=float)
+        self.cell = np.array(new_cell, dtype=float)
+        self.pbc = np.array(new_pbc, dtype=float)
+
+        # dataset info
+        self.natom = int(self.xyz.shape[1]) if self.xyz.ndim >= 2 else 0
+        self.nstate = int(self.energy.shape[1]) if self.energy.ndim >= 2 else 0
+        self.nnac = int(self.nac.shape[1]) if self.nac.ndim >= 2 else 0
+        self.nsoc = int(self.soc.shape[1]) if self.soc.ndim >= 2 else 0
+
+        try:
+            self.atomic_numbers = [atomic_number(atom) for atom in self.atoms]
+        except ValueError:
+            pass
+
+        self.info = {
+            'natom': self.natom,
+            'nstate': self.nstate,
+            'nnac': self.nnac,
+            'nsoc': self.nsoc,
+        }
+
+        return self
+
     def append(self, newdata):
         new_xyz, new_charges, new_cell, new_pbc, new_energy, new_grad, new_nac, new_soc = newdata
         self.xyz = np.concatenate((self.xyz, new_xyz))

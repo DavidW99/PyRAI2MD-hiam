@@ -8,6 +8,7 @@
 ######################################################
 
 import os
+import sys
 import json
 import shutil
 import time
@@ -185,6 +186,8 @@ class AdaptiveSampling:
         self.fwdsoc = keywords['control']['fwdsoc']
         self.bcksoc = keywords['control']['bcksoc']
 
+        self._validate_ml_settings()
+
         ## initialize trajectories stat
         self.itr = 0
         self.ntraj = ninitcond
@@ -244,8 +247,12 @@ class AdaptiveSampling:
         ## load training data
         train_data = keywords[self.ml]['train_data']
         self.data = Data()
-        self.data.load(train_data)
-        self.data.stat()
+        if self.ml == 'nequip' and train_data is None:
+            # NequIP adaptive sampling begins without seed data
+            self.data = Data()
+        else:
+            self.data.load(train_data)
+            self.data.stat()
 
         ## generate initial conditions and trajectories
         np.random.seed(gl_seed)
@@ -254,6 +261,21 @@ class AdaptiveSampling:
 
         ## set multiprocessing
         multiprocessing.set_start_method('spawn')
+
+    def _validate_ml_settings(self):
+        """Validate ml settings for adaptive sampling as nequip-nac 
+        handles training outside of PyRAI2MD"""
+        if self.ml != 'nequip':
+            return
+
+        if self.load != 1:
+            sys.exit('\n  KeywordError\n  PyRAI2MD: adaptive sampling with nequip requires `load 1` (trained model)')
+        if self.transfer != 0:
+            sys.exit('\n  KeywordError\n  PyRAI2MD: adaptive sampling with nequip does not support transfer learning')
+        if self.remote_train != 0:
+            sys.exit('\n  KeywordError\n  PyRAI2MD: adaptive sampling with nequip does not support remote training')
+
+        return
 
     def _run_aimd(self):
         ## wrap variables for multiprocessing
@@ -829,13 +851,27 @@ class AdaptiveSampling:
         return self
 
     def _update_train_set(self, newdata):
-        self.data.append(newdata)
+        # No converged QC points collected in this iteration.
+        if len(newdata[0]) == 0:
+            return self
+
+        if self.ml == 'nequip' and len(self.data.xyz) == 0:
+            # NequIP starts from an empty Data(),
+            # the first QC batch initializes the dataset
+            self.data.initialize_from_batch(newdata)
+        else:
+            self.data.append(newdata)
+
         self.data.stat()
         self.data.save(self.itr + 1)
 
         return self
 
     def _train_model(self):
+        if self.ml == 'nequip':
+            # Skips NequIP training/retraining in PyRAI2MD.
+            return self
+
         ## add training data to keywords
         self.keywords[self.ml]['train_mode'] = 'training'
         self.keywords[self.ml]['data'] = self.data
