@@ -159,6 +159,14 @@ def read_input(ld_input):
         'orca': KeyOrca().info(variables_all['orca']),
         'openqp': KeyOpenQP().info(variables_all['openqp']),
         'xtb': KeyXtb().info(variables_all['xtb']),
+        'stubqc': """
+  &stubqc
+-------------------------------------------------------
+  Interface:                  StubQC
+  Purpose:                    testing-only deterministic QC stub
+-------------------------------------------------------
+
+        """,
     }
 
     qm = variables_all['control']['qm']
