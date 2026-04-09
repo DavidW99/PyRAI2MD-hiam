@@ -57,7 +57,6 @@ def test_nequip_load_model_preserves_numpy_rng(monkeypatch):
             "model_path": "dummy.nequip.pth",
             "gpu": False,
             "nnac": 1,
-            "natom": 3,
             "chemical_symbols": ["H", "C", "N"],
         }
     )

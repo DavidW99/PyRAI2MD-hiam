@@ -24,7 +24,6 @@ def test_nequip_data_conversion():
         'model_path': str(model_path),
         'gpu': False, # For testing, use CPU
         'nnac': 1,
-        'natom': natom,
         'chemical_symbols': ['H', 'C', 'N']
     })
     nequip.load_model()
