@@ -35,7 +35,6 @@ class NequIPNAC:
         self.metadata = None
         self.transforms = []
         self.nnac = param['nnac']
-        self.natom = param['natom']
 
         self.set_device()
 
@@ -252,29 +251,33 @@ class NequIPNAC:
         AtomicDataDict, _, _ = self._get_nequip_predict_dependencies()
         NAC_KEY, ENERGY_0_KEY, ENERGY_1_KEY, FORCE_0_KEY, FORCE_1_KEY = self._get_nequip_nac_keys()
 
-        # Check if xyz_list is a list
         if not isinstance(xyz_list, list):
             raise TypeError(
                 f"xyz_list must be a list, got {type(xyz_list).__name__}. "
                 f"For single molecule, use: predict([xyz_array])"
             )
-        assert all(len(xyz) == self.natom for xyz in xyz_list), "All structures must have the same number of atoms as specified in natom."
 
         num_data = len(xyz_list)
-
-        # Prepare data
-        data_list = [self._xyz_to_nequip_data(np.array(xyz)) for xyz in xyz_list]
-        
-        # Apply transforms (chemical species mapping + neighbor list) 
-        for i in range(num_data):
-            for t in self.transforms:
-                data_list[i] = t(data_list[i])
-            data_list[i] = AtomicDataDict.to_(data_list[i], self.device)
+        if num_data == 0:
+            raise ValueError("xyz_list must contain at least one structure.")
 
         if num_data == 1:
-            data = data_list[0]
+            # Fast path for single-frame inference.
+            data = self._xyz_to_nequip_data(np.array(xyz_list[0]))
+            for t in self.transforms:
+                data = t(data)
+            data = AtomicDataDict.to_(data, self.device)
         else:
-            # Use NequIP's built-in batching function
+            # For batched inputs, validate atom-count consistency and batch transformed data.
+            natom = len(xyz_list[0])
+            data_list = []
+            for xyz in xyz_list:
+                if len(xyz) != natom:
+                    raise AssertionError("All structures in xyz_list must have the same number of atoms.")
+                data_i = self._xyz_to_nequip_data(np.array(xyz))
+                for t in self.transforms:
+                    data_i = t(data_i)
+                data_list.append(AtomicDataDict.to_(data_i, self.device))
             data = AtomicDataDict.batched_from_list(data_list)
         
         # Lists to store predictions from each model
