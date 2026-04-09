@@ -9,6 +9,7 @@
 
 import os
 import time
+import sys
 import torch.cuda
 import numpy as np
 
@@ -44,7 +45,6 @@ class NequIPModel:
         self.runtype = runtype
         title = keywords['control']['title']
         variables = keywords['nequip'].copy()
-        modeldir = variables['modeldir']
         eg_unit = variables['eg_unit']
         nac_unit = variables['nac_unit']
         gpu = variables['gpu']
@@ -52,9 +52,10 @@ class NequIPModel:
         self.jobtype = keywords['control']['jobtype']
         self.version = keywords['version']
         self.silent = variables['silent']
+        self.keywords = keywords
 
-        # TODO: update to code standard 
-        self.natom = variables['nequip_eg']['natom']
+        # TODO: update to code standard
+        self.natom = 'auto'
         self.nstate = keywords['molecule']['ci']
         self.nnac = len(keywords['molecule']['coupling'])
         self.nsoc = None 
@@ -64,9 +65,6 @@ class NequIPModel:
             self.name = f"NequIP-{title}"
         else:
             self.name = f"NequIP-{title}-{job_id}"
-        
-        if modeldir is None or job_id not in [None, 1]:
-            modeldir = self.name
         
         # Unit conversions (au to eV/Å)
         h_to_ev = 27.211396132
@@ -102,16 +100,12 @@ class NequIPModel:
         else:
             self.device_name = 'cpu'
         
-        # Handle multiple models in modeldir
-        model_path = variables['modeldir']
-        if isinstance(model_path, str) and ',' in model_path:
-            model_path = [p.strip() for p in model_path.split(',')]
+        model_path = self._resolve_model_paths(variables)
 
         # Setup model parameters
         param = {
             'model_path': model_path,
             'gpu': gpu > 0,
-            'natom': self.natom,
             'nnac': self.nnac,
             'chemical_symbols': variables.get('chemical_symbols', None),
         }
@@ -119,6 +113,33 @@ class NequIPModel:
         # Initialize NequIP-NAC model
         self.model = NequIPNAC(param)
         print(self._heading())
+
+    def _resolve_model_paths(self, variables):
+        # NequIP follows the same single-entry-point convention as other models:
+        # user-facing model files come only from &NEQUIP modeldir.
+        modeldir_paths = [p.strip() for p in str(variables.get('modeldir', '')).split(',') if p.strip()]
+
+        if len(modeldir_paths) == 0:
+            sys.exit(
+                '\n  KeywordError\n'
+                '  PyRAI2MD: nequip requires model paths from `&nequip modeldir`.\n'
+                '  For multiple models, use comma-separated paths, e.g.\n'
+                '  `modeldir model1.nequip.pth, model2.nequip.pth`'
+            )
+
+        for path in modeldir_paths:
+            if not os.path.exists(path):
+                sys.exit('\n  FileNotFoundError\n  PyRAI2MD: looking for nequip model %s' % path)
+
+        if self.jobtype == 'adaptive' and len(modeldir_paths) < 2:
+            sys.exit(
+                '\n  KeywordError\n'
+                '  PyRAI2MD: adaptive sampling with nequip requires at least two compiled models.\n'
+                '  Provide comma-separated paths in `&nequip modeldir`, e.g.\n'
+                '  `modeldir model1.nequip.pth, model2.nequip.pth`'
+            )
+
+        return modeldir_paths if len(modeldir_paths) > 1 else modeldir_paths[0]
     
     def _heading(self):
         headline = """
@@ -147,20 +168,42 @@ class NequIPModel:
             self.device_name,
         )
         return headline
+
+    def _set_natom_from_traj(self, traj, qm_region=False):
+        if qm_region:
+            natom = len(traj.qm_atoms)
+        else:
+            natom = len(traj.atoms)
+
+        if self.natom == 'auto':
+            # NequIP does not receive training data here, so cache natom from the first runtime structure.
+            self.natom = natom
+        elif self.natom != natom:
+            sys.exit(
+                '\n  ValueError\n  PyRAI2MD: NequIP received %s atoms, but the model was initialized with %s atoms'
+                % (natom, self.natom)
+            )
+
+        return self.natom
     
     def load(self):
         """Load trained NequIP-NAC model"""
         self.model.load_model()
         
         return self
+
+    def train(self):
+        # Retraining is handled outside PyRAI2MD for this NequIP interface.
+        sys.exit('\n  RuntimeError\n  PyRAI2MD: NequIP training/retraining is not supported in this interface')
     
     def _high(self, traj):
         """Run NequIP-NAC for high level (QM) region in QM/MM calculation"""
         traj = traj.apply_qmmm()
-        
+
+        natom = self._set_natom_from_traj(traj, qm_region=True)
         # Prepare input: (1, natom, 4) with [symbol, x, y, z]
-        atoms = traj.qm_atoms.reshape((1, self.natom, 1))
-        xyz = traj.qm_coord.reshape((1, self.natom, 3))
+        atoms = traj.qm_atoms.reshape((1, natom, 1))
+        xyz = traj.qm_coord.reshape((1, natom, 3))
         x = np.concatenate((atoms, xyz), axis=-1).tolist()
         
         # Predict
@@ -208,10 +251,11 @@ class NequIPModel:
     
     def _high_mid_low(self, traj):
         """Run NequIP-NAC for full system (all atoms) in pure QM calculation"""
-        
+
+        natom = self._set_natom_from_traj(traj, qm_region=False)
         # Prepare input: (1, natom, 4) with [symbol, x, y, z]
-        atoms = traj.atoms.reshape((1, self.natom, 1))
-        xyz = traj.coord.reshape((1, self.natom, 3))
+        atoms = traj.atoms.reshape((1, natom, 1))
+        xyz = traj.coord.reshape((1, natom, 3))
         x = np.concatenate((atoms, xyz), axis=-1).tolist()
         
         # Predict
