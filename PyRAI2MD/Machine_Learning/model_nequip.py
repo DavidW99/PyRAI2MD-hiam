@@ -114,16 +114,28 @@ class NequIPModel:
         print(self._heading())
 
     def _resolve_model_paths(self, variables):
-        # NequIP follows the same single-entry-point convention as other models:
-        # user-facing model files come only from &NEQUIP modeldir.
-        modeldir_paths = [p.strip() for p in str(variables.get('modeldir', '')).split(',') if p.strip()]
+        # `modeldir` is a comma-separated list of standalone compiled model files, one per
+        # ensemble member (vs the NNsMD backends' single library-managed directory).
+        raw_modeldir = str(variables.get('modeldir', ''))
+        modeldir_pieces = raw_modeldir.split(',')
+        modeldir_paths = [p.strip() for p in modeldir_pieces if p.strip()]
 
         if len(modeldir_paths) == 0:
             sys.exit(
                 '\n  KeywordError\n'
                 '  PyRAI2MD: nequip requires model paths from `&nequip modeldir`.\n'
-                '  For multiple models, use comma-separated paths, e.g.\n'
-                '  `modeldir model1.nequip.pth, model2.nequip.pth`'
+                '  For multiple models, use comma-separated paths without spaces, e.g.\n'
+                '  `modeldir model1.nequip.pt2,model2.nequip.pt2`'
+            )
+
+        # `modeldir` keeps only the first whitespace token, so `a.pt2, b.pt2` becomes
+        # 'a.pt2,', which splits into ['a.pt2', ''] -- the empty piece flags the drop.
+        if any(piece.strip() == '' for piece in modeldir_pieces):
+            sys.exit(
+                '\n  KeywordError\n'
+                '  PyRAI2MD: `&nequip modeldir` = %r has an empty comma-separated entry.\n'
+                '  Paths must be comma-separated WITHOUT spaces (a space after a comma drops\n'
+                '  the rest). Use `modeldir model1.nequip.pt2,model2.nequip.pt2`' % raw_modeldir
             )
 
         for path in modeldir_paths:
@@ -134,8 +146,8 @@ class NequIPModel:
             sys.exit(
                 '\n  KeywordError\n'
                 '  PyRAI2MD: adaptive sampling with nequip requires at least two compiled models.\n'
-                '  Provide comma-separated paths in `&nequip modeldir`, e.g.\n'
-                '  `modeldir model1.nequip.pth, model2.nequip.pth`'
+                '  Provide comma-separated paths without spaces in `&nequip modeldir`, e.g.\n'
+                '  `modeldir model1.nequip.pt2,model2.nequip.pt2`'
             )
 
         return modeldir_paths if len(modeldir_paths) > 1 else modeldir_paths[0]
