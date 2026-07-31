@@ -10,14 +10,6 @@ class _FakeGraphModel:
     PER_EDGE_TYPE_CUTOFF_KEY = "per_edge_type_cutoff"
 
 
-class _IdentitySpeciesMapper:
-    def __init__(self, chemical_symbols):
-        self.chemical_symbols = chemical_symbols
-
-    def __call__(self, data):
-        return data
-
-
 def test_nequip_load_model_preserves_numpy_rng(monkeypatch):
     fake_metadata = {
         _FakeGraphModel.R_MAX_KEY: 4.5,
@@ -25,6 +17,8 @@ def test_nequip_load_model_preserves_numpy_rng(monkeypatch):
     }
 
     def fake_load_compiled_model(path, device, input_keys=None, output_keys=None):
+        # emulate NequIP's real `load_compiled_model`, which internally calls
+        # `set_global_state` -> `seed_everything` (which reseeds the RNG)
         np.random.seed(123)
         return object(), fake_metadata
 
@@ -33,18 +27,13 @@ def test_nequip_load_model_preserves_numpy_rng(monkeypatch):
         "_get_nequip_load_dependencies",
         staticmethod(
             lambda: (
-                fake_load_compiled_model,
-                _FakeGraphModel,
-                lambda metadata, r_max, type_names: (lambda data: data),
-                _IdentitySpeciesMapper,
-                ["fake_input"],
+                fake_load_compiled_model,                    # load_compiled_model
+                _FakeGraphModel,                             # graph_model
+                lambda species_map, type_names: {},          # handle_chemical_species_map
+                lambda metadata, r_max, type_names, species_map: [lambda data: data],  # basic_transforms
+                ["fake_input"],                              # PAIR_NEQUIP_INPUTS
             )
         ),
-    )
-    monkeypatch.setattr(
-        NequIPNAC,
-        "_get_nequip_nac_keys",
-        staticmethod(lambda: ("nac", "energy_0", "energy_1", "force_0", "force_1")),
     )
 
     seed = 2025
@@ -57,7 +46,6 @@ def test_nequip_load_model_preserves_numpy_rng(monkeypatch):
             "model_path": "dummy.nequip.pth",
             "gpu": False,
             "nnac": 1,
-            "chemical_symbols": ["H", "C", "N"],
         }
     )
     model.load_model()

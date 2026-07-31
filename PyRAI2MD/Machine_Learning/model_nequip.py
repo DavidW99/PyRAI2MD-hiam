@@ -107,7 +107,6 @@ class NequIPModel:
             'model_path': model_path,
             'gpu': gpu > 0,
             'nnac': self.nnac,
-            'chemical_symbols': variables.get('chemical_symbols', None),
         }
         
         # Initialize NequIP-NAC model

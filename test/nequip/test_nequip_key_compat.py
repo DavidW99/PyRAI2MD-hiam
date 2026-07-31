@@ -17,7 +17,7 @@ def test_nequip_legacy_keys_are_ignored_with_warning(capsys):
     )
 
     assert result["model_type"] == "eg"
-    assert result["chemical_symbols"] == ["H", "C", "N"]
+    assert "chemical_symbols" not in result  # a legacy key: ignored
     assert "natom" not in result
     assert "model_path" not in result
     assert "gpu" not in result
@@ -29,6 +29,8 @@ def test_nequip_legacy_keys_are_ignored_with_warning(capsys):
     assert "legacy key `model_path`" in stderr
     assert "legacy key `gpu`" in stderr
     assert "`&nequip modeldir` and `&nequip gpu`" in stderr
+    assert "legacy key `chemical_symbols`" in stderr
+    assert "derived from the model metadata" in stderr
 
 
 def test_nequip_unknown_key_still_fails():

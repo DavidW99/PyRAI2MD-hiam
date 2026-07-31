@@ -15,12 +15,10 @@ class KeyNequIP:
     def __init__(self, key_type='nac'):
         eg = {
             'model_type': '',
-            'chemical_symbols': None,
         }
 
         nac = {
             'model_type': '',
-            'chemical_symbols': None,
         }
 
         soc = None
@@ -42,12 +40,12 @@ class KeyNequIP:
         keywords = self.keywords.copy()
         keyfunc = {
             'model_type': ReadVal('s'),
-            'chemical_symbols': ReadVal('sl'),
         }
         legacy_keyfunc = {
             'natom': ReadVal('i'),
             'model_path': ReadVal('s'),
             'gpu': ReadVal('i'),
+            'chemical_symbols': ReadVal('sl'),
         }
         seen_legacy = set()
 
@@ -82,6 +80,14 @@ class KeyNequIP:
                 'Please remove this key.'
             ) % self.key_type
 
+        if key == 'chemical_symbols':
+            return (
+                '\n  DeprecationWarning\n'
+                '  PyRAI2MD: legacy key `chemical_symbols` in &nequip_%s is ignored; '
+                'atom types are derived from the model metadata (type_names). '
+                'Please remove this key.'
+            ) % self.key_type
+
         return (
             '\n  DeprecationWarning\n'
             '  PyRAI2MD: legacy key `%s` in &nequip_%s is ignored; '
@@ -98,14 +104,10 @@ class KeyNequIP:
   &hyperparameters            Energy+Gradient      Nonadiabatic         Spin-orbit
 ----------------------------------------------------------------------------------------------
   Model type:                 NequIP%-13s NequIP%-13s %-13s
-  Chemical symbols:           %-20s %-20s %-20s
 ----------------------------------------------------------------------------------------------
         """ % (
             eg['model_type'],
             nac['model_type'],
-            'n/a',
-            str(eg['chemical_symbols']) if eg['chemical_symbols'] else 'auto',
-            str(nac['chemical_symbols']) if nac['chemical_symbols'] else 'auto',
             'n/a',
         )
 
