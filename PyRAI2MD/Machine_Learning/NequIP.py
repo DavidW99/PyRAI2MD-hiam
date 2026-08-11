@@ -216,7 +216,10 @@ class NequIPNAC:
         data = {
             AtomicDataDict.POSITIONS_KEY: positions,
             AtomicDataDict.ATOMIC_NUMBERS_KEY: atom_numbers,
-            # For non-periodic systems, use default values
+            # A molecule has no cell: ASE defaults to zeros
+            # Zero also nulls the spurious `edge_cell_shift` matscipy
+            # returns from binning against a completed 1 A cell (`S @ 0 == 0`).
+            # Do not put a real cell here without rebuilding the neighborlist.
             AtomicDataDict.CELL_KEY: np.zeros((3, 3)),
             AtomicDataDict.PBC_KEY: np.array([False, False, False]),
         }
